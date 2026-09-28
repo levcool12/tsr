@@ -7,9 +7,11 @@ import os
 # НАСТРОЙКИ ПУТИ
 # ==========================================
 FILE_PATH = r"medical_data.csv"
-# ==========================================
 
-# 1. Безопасная загрузка данных
+
+# ==========================================
+# БЕЗОПАСНАЯ ЗАГРУЗКА ДАННЫХ
+# ==========================================
 if os.path.exists(FILE_PATH):
     try:
         df = pd.read_csv(FILE_PATH, encoding='utf-8')
@@ -18,234 +20,1035 @@ if os.path.exists(FILE_PATH):
 else:
     print(f"⚠️ Файл не найден по пути: {FILE_PATH}")
     print("Запускаю встроенную программную симуляцию медицинского датасета...")
-    
+
     import random
+
     random.seed(42)
-    symptoms_pool = ['Fatigue', 'Fever', 'Cough', 'Shortness of breath', 'Sore throat', 'Headache', 'Runny nose', 'Body ache']
-    
+
+    symptoms_pool = [
+        'Fatigue',
+        'Fever',
+        'Cough',
+        'Shortness of breath',
+        'Sore throat',
+        'Headache',
+        'Runny nose',
+        'Body ache'
+    ]
+
     demo_rows = []
+
     for i in range(1, 2001):
-        p_s = random.sample(symptoms_pool, k=random.randint(1, 3))
-        s1 = p_s if len(p_s) > 0 else 'None'
-        s2 = p_s if len(p_s) > 1 else 'None'
-        s3 = p_s if len(p_s) > 2 else 'None'
+        p_s = random.sample(
+            symptoms_pool,
+            k=random.randint(1, 3)
+        )
+
+        s1 = p_s[0] if len(p_s) > 0 else 'None'
+        s2 = p_s[1] if len(p_s) > 1 else 'None'
+        s3 = p_s[2] if len(p_s) > 2 else 'None'
+
         demo_rows.append({
-            'Patient_ID': i, 'Age': 45, 'Gender': 'Male',
-            'Symptom_1': s1, 'Symptom_2': s2, 'Symptom_3': s3,
-            'Heart_Rate_bpm': 70, 'Body_Temperature_C': 36.6,
-            'Blood_Pressure_mmHg': '120/80', 'Oxygen_Saturation_%': 98,
-            'Diagnosis': 'Cold', 'Severity': 'Mild', 'Treatment_Plan': 'Rest'
+            'Patient_ID': i,
+            'Age': 45,
+            'Gender': 'Male',
+            'Symptom_1': s1,
+            'Symptom_2': s2,
+            'Symptom_3': s3,
+            'Heart_Rate_bpm': 70,
+            'Body_Temperature_C': 36.6,
+            'Blood_Pressure_mmHg': '120/80',
+            'Oxygen_Saturation_%': 98,
+            'Diagnosis': 'Cold',
+            'Severity': 'Mild',
+            'Treatment_Plan': 'Rest'
         })
+
     df = pd.DataFrame(demo_rows)
 
-# 2. Обработка симптомов
-symptom_cols = ['Symptom_1', 'Symptom_2', 'Symptom_3']
+
+# ==========================================
+# ОБРАБОТКА СИМПТОМОВ
+# ==========================================
+symptom_cols = [
+    'Symptom_1',
+    'Symptom_2',
+    'Symptom_3'
+]
+
 patient_combinations = []
 all_symptoms = set()
 
+
 for _, row in df.iterrows():
+
     symptoms = []
+
     for col in symptom_cols:
+
         val = row[col]
-        # Проверяем на пустоту (работает и со списками, и со строками)
-        if pd.notna(val) is True or (hasattr(val, '__len__') and len(val) > 0):
-            # Если внутри ячейки оказался список/массив, вытаскиваем элементы
-            if isinstance(val, (list, tuple, set)):
-                symptoms.extend([str(item).strip() for item in val])
-            else:
-                symptoms.append(str(val).strip())
-                
-    symptoms = [s for s in symptoms if s.lower() not in ['none', 'nan', '']]
+
+        # ------------------------------------------
+        # Обработка списков / кортежей / множеств
+        # ------------------------------------------
+        if isinstance(val, (list, tuple, set)):
+
+            if len(val) > 0:
+                symptoms.extend(
+                    [
+                        str(item).strip()
+                        for item in val
+                    ]
+                )
+
+        # ------------------------------------------
+        # Обработка обычных значений
+        # ------------------------------------------
+        else:
+
+            if pd.notna(val):
+
+                value = str(val).strip()
+
+                if value.lower() not in [
+                    'none',
+                    'nan',
+                    ''
+                ]:
+                    symptoms.append(value)
+
+    # ------------------------------------------
+    # Удаляем служебные значения
+    # ------------------------------------------
+    symptoms = [
+        s for s in symptoms
+        if s.lower() not in [
+            'none',
+            'nan',
+            ''
+        ]
+    ]
+
+    # ------------------------------------------
+    # Сортировка симптомов
+    # ------------------------------------------
     symptoms.sort()
+
     if symptoms:
-        patient_combinations.append(tuple(symptoms))
+
+        patient_combinations.append(
+            tuple(symptoms)
+        )
+
         all_symptoms.update(symptoms)
 
-symptoms_list = sorted(list(all_symptoms))
-num_symptoms = len(symptoms_list)
 
+# ==========================================
+# СПИСОК ВСЕХ СИМПТОМОВ
+# ==========================================
+symptoms_list = sorted(
+    list(all_symptoms)
+)
+
+num_symptoms = len(
+    symptoms_list
+)
+
+
+# ==========================================
+# ИНДИВИДУАЛЬНЫЕ КОЛИЧЕСТВА
+# ==========================================
 individual_counts = Counter()
+
 for s_tuple in patient_combinations:
     individual_counts.update(s_tuple)
-left_bars_values = [individual_counts[s] for s in symptoms_list]
 
-all_combo_counts = Counter(patient_combinations).most_common()
+left_bars_values = [
+    individual_counts[s]
+    for s in symptoms_list
+]
 
-COLOR_PRIMARY = '#2b5c8f'   
-COLOR_DOT_EMPTY = '#f4f6f6' 
-COLOR_BG_STRIPE = '#fbfcfc' 
+
+# ==========================================
+# КОМБИНАЦИИ
+# ==========================================
+all_combo_counts = Counter(
+    patient_combinations
+).most_common()
+
+
+# ============================================================
+# ЦВЕТА UPSET PLOT
+#
+# ВАЖНО:
+# Каждый элемент имеет собственный цвет.
+# Изменение цвета столбцов НЕ меняет точки.
+# ============================================================
+
+# Столбцы пересечений
+COLOR_BAR = '#303030'
+
+# Активные точки
+COLOR_ACTIVE_DOT = '#3d3d3d'
+
+# Соединительные линии
+COLOR_CONNECTION = '#555555'
+
+# Фон строк
+COLOR_ROW_WHITE = '#ffffff'
+COLOR_ROW_GRAY = '#f0f0f0'
+
+# Неактивные точки
+# Разные оттенки нужны для читаемости
+# на белом и сером фоне.
+COLOR_INACTIVE_WHITE = '#d9d9d9'
+COLOR_INACTIVE_GRAY = '#c9c9c9'
+
+# Боковые столбцы
+COLOR_SIDE_BAR = '#3f3f3f'
+
+# Текст
+COLOR_TEXT = '#3a3a3a'
+
+# Сетка
+COLOR_GRID = '#d8d8d8'
+
+
+# ============================================================
+# ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ:
+# ФОН СТРОК
+# ============================================================
+
+def draw_alternating_rows(ax, n_rows):
+    """
+    Создаёт чередующиеся белые и светло-серые строки.
+    """
+
+    for row in range(n_rows):
+
+        if row % 2 == 0:
+            bg_color = COLOR_ROW_WHITE
+        else:
+            bg_color = COLOR_ROW_GRAY
+
+        ax.axhspan(
+            row - 0.5,
+            row + 0.5,
+            facecolor=bg_color,
+            zorder=0
+        )
+
+
+# ============================================================
+# ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ:
+# НЕАКТИВНАЯ ТОЧКА
+# ============================================================
+
+def draw_inactive_dot(ax, x, y, size):
+    """
+    Рисует неактивную точку.
+    Цвет автоматически выбирается в зависимости
+    от фона строки.
+    """
+
+    if y % 2 == 0:
+        dot_color = COLOR_INACTIVE_WHITE
+    else:
+        dot_color = COLOR_INACTIVE_GRAY
+
+    ax.scatter(
+        x,
+        y,
+        color=dot_color,
+        s=size,
+        edgecolors='none',
+        linewidths=0,
+        zorder=2
+    )
+
 
 # ==============================================================================
-# ОКНО №1: ГОРИЗОНТАЛЬНЫЙ ГРАФИК (ТОП-20) + АВТОСОХРАНЕНИЕ
+# ОКНО №1
+# ГОРИЗОНТАЛЬНЫЙ UPSET PLOT — ТОП-20
 # ==============================================================================
+
 plot_combos_top = all_combo_counts[:20]
-num_display_top = len(plot_combos_top)
 
-fig1 = plt.figure(figsize=(15, 8))
-gs1 = fig1.add_gridspec(2, 2, width_ratios=[0.25, 0.75], height_ratios=[0.4, 0.6], wspace=0.12, hspace=0.02)
+num_display_top = len(
+    plot_combos_top
+)
 
-# Исправлено: Явно указаны квадратные скобки со срезами для gs1
-ax_top_bar = fig1.add_subplot(gs1[0, 1])   
-ax_matrix = fig1.add_subplot(gs1[1, 1], sharex=ax_top_bar) 
-ax_left_bar = fig1.add_subplot(gs1[1, 0])  
 
-top_values_top = [count for combo, count in plot_combos_top]
-bars1 = ax_top_bar.bar(range(num_display_top), top_values_top, color=COLOR_PRIMARY, width=0.4, zorder=3)
-ax_top_bar.set_ylabel('Пациентов в\nпересечении', fontsize=10, weight='bold')
-ax_top_bar.grid(axis='y', linestyle=':', alpha=0.6, zorder=0)
+fig1 = plt.figure(
+    figsize=(15, 8)
+)
+
+
+gs1 = fig1.add_gridspec(
+    2,
+    2,
+    width_ratios=[0.25, 0.75],
+    height_ratios=[0.4, 0.6],
+    wspace=0.12,
+    hspace=0.02
+)
+
+
+# ------------------------------------------
+# Области графика
+# ------------------------------------------
+
+ax_top_bar = fig1.add_subplot(
+    gs1[0, 1]
+)
+
+ax_matrix = fig1.add_subplot(
+    gs1[1, 1],
+    sharex=ax_top_bar
+)
+
+ax_left_bar = fig1.add_subplot(
+    gs1[1, 0]
+)
+
+
+# ==============================================================================
+# ВЕРХНИЕ СТОЛБЦЫ
+# ==============================================================================
+
+top_values_top = [
+    count
+    for combo, count in plot_combos_top
+]
+
+
+bars1 = ax_top_bar.bar(
+    range(num_display_top),
+    top_values_top,
+    color=COLOR_BAR,
+    width=0.42,
+    edgecolor='none',
+    zorder=3
+)
+
+
+ax_top_bar.set_ylabel(
+    'Пациентов в\nпересечении',
+    fontsize=10,
+    weight='bold'
+)
+
+
+ax_top_bar.grid(
+    axis='y',
+    linestyle='-',
+    linewidth=0.6,
+    color=COLOR_GRID,
+    alpha=0.8,
+    zorder=0
+)
+
+
 ax_top_bar.spines['top'].set_visible(False)
 ax_top_bar.spines['right'].set_visible(False)
-ax_top_bar.tick_params(labelbottom=False, bottom=False)
+
+ax_top_bar.tick_params(
+    labelbottom=False,
+    bottom=False
+)
+
+
+# ==============================================================================
+# ЧИСЛА НАД СТОЛБЦАМИ
+# ==============================================================================
 
 for bar in bars1:
-    ax_top_bar.annotate(f'{int(bar.get_height())}',
-                        xy=(bar.get_x() + bar.get_width() / 2, 0),
-                        xytext=(0, 6), textcoords="offset points",
-                        ha='center', va='bottom', fontsize=9, weight='bold', color='white', rotation=90, zorder=4)
 
-for y in range(num_symptoms):
-    bg_color = COLOR_BG_STRIPE if y % 2 == 0 else 'white'
-    ax_matrix.axhspan(y - 0.5, y + 0.5, facecolor=bg_color, zorder=0, alpha=0.5)
+    height = bar.get_height()
 
-dot_size1 = max(90, min(150, 1200 / num_display_top))
+    ax_top_bar.annotate(
+        f'{int(height)}',
+        xy=(
+            bar.get_x() + bar.get_width() / 2,
+            height
+        ),
+        xytext=(0, 5),
+        textcoords='offset points',
+        ha='center',
+        va='bottom',
+        fontsize=9,
+        color=COLOR_TEXT,
+        weight='normal',
+        rotation=0,
+        zorder=4
+    )
 
-for x, (combo, count) in enumerate(plot_combos_top):
-    active_y_indices = [symptoms_list.index(s) for s in combo]
-    inactive_y = [y for y in range(num_symptoms) if y not in active_y_indices]
-    
-    ax_matrix.scatter([x] * len(inactive_y), inactive_y, color=COLOR_DOT_EMPTY, s=dot_size1, alpha=0.5, zorder=2)
+
+# ==============================================================================
+# МАТРИЦА ТОЧЕК
+# ==============================================================================
+
+draw_alternating_rows(
+    ax_matrix,
+    num_symptoms
+)
+
+
+dot_size1 = max(
+    75,
+    min(
+        120,
+        1000 / max(num_display_top, 1)
+    )
+)
+
+
+for x, (combo, count) in enumerate(
+    plot_combos_top
+):
+
+    # ------------------------------------------
+    # Активные симптомы
+    # ------------------------------------------
+
+    active_y_indices = [
+        symptoms_list.index(s)
+        for s in combo
+    ]
+
+    # ------------------------------------------
+    # Неактивные симптомы
+    # ------------------------------------------
+
+    inactive_y = [
+        y
+        for y in range(num_symptoms)
+        if y not in active_y_indices
+    ]
+
+    # ------------------------------------------
+    # Неактивные точки
+    # ------------------------------------------
+
+    for y in inactive_y:
+
+        draw_inactive_dot(
+            ax_matrix,
+            x,
+            y,
+            dot_size1
+        )
+
+    # ------------------------------------------
+    # Соединительная линия
+    # ------------------------------------------
+
     if len(active_y_indices) > 1:
-        ax_matrix.plot([x, x], [min(active_y_indices), max(active_y_indices)], color=COLOR_PRIMARY, linewidth=2.5, zorder=2)
-    ax_matrix.scatter([x] * len(active_y_indices), active_y_indices, color=COLOR_PRIMARY, s=dot_size1 + 15, zorder=3)
 
-ax_matrix.set_xlim(-0.5, num_display_top - 0.5)
-ax_matrix.set_ylim(-0.5, num_symptoms - 0.5)
-ax_matrix.axis('off')
+        ax_matrix.plot(
+            [x, x],
+            [
+                min(active_y_indices),
+                max(active_y_indices)
+            ],
+            color=COLOR_CONNECTION,
+            linewidth=1.8,
+            solid_capstyle='round',
+            zorder=2
+        )
 
-y_pos1 = range(num_symptoms)
-left_bars1 = ax_left_bar.barh(y_pos1, left_bars_values, color='#4a5568', height=0.4, zorder=3)
-ax_left_bar.set_xlabel('Всего с симптомом\n(выборка: {})'.format(len(df)), fontsize=10, weight='bold')
-ax_left_bar.set_yticks(y_pos1)
-ax_left_bar.set_yticklabels(symptoms_list, fontsize=10, weight='bold')
-ax_left_bar.invert_xaxis()  
-ax_left_bar.grid(axis='x', linestyle=':', alpha=0.6, zorder=0)
+    # ------------------------------------------
+    # Активные точки
+    # ------------------------------------------
+
+    ax_matrix.scatter(
+        [x] * len(active_y_indices),
+        active_y_indices,
+        color=COLOR_ACTIVE_DOT,
+        s=dot_size1 + 8,
+        edgecolors='none',
+        linewidths=0,
+        zorder=3
+    )
+
+
+# ------------------------------------------
+# Границы матрицы
+# ------------------------------------------
+
+ax_matrix.set_xlim(
+    -0.5,
+    num_display_top - 0.5
+)
+
+ax_matrix.set_ylim(
+    -0.5,
+    num_symptoms - 0.5
+)
+
+ax_matrix.set_yticks(
+    range(num_symptoms)
+)
+
+ax_matrix.set_yticklabels(
+    symptoms_list,
+    fontsize=10,
+    weight='bold'
+)
+
+ax_matrix.tick_params(
+    axis='y',
+    length=0
+)
+
+ax_matrix.spines['top'].set_visible(False)
+ax_matrix.spines['right'].set_visible(False)
+ax_matrix.spines['left'].set_visible(False)
+ax_matrix.spines['bottom'].set_visible(False)
+
+ax_matrix.tick_params(
+    axis='x',
+    bottom=False,
+    labelbottom=False
+)
+
+
+# ==============================================================================
+# ЛЕВЫЕ СТОЛБЦЫ
+# ==============================================================================
+
+y_pos1 = range(
+    num_symptoms
+)
+
+
+left_bars1 = ax_left_bar.barh(
+    y_pos1,
+    left_bars_values,
+    color=COLOR_SIDE_BAR,
+    height=0.42,
+    edgecolor='none',
+    zorder=3
+)
+
+
+ax_left_bar.set_xlabel(
+    'Всего с симптомом\n(выборка: {})'.format(len(df)),
+    fontsize=10,
+    weight='bold'
+)
+
+
+ax_left_bar.set_yticks(
+    y_pos1
+)
+
+ax_left_bar.set_yticklabels(
+    symptoms_list,
+    fontsize=10,
+    weight='bold'
+)
+
+
+ax_left_bar.invert_xaxis()
+
+
+ax_left_bar.grid(
+    axis='x',
+    linestyle='-',
+    linewidth=0.6,
+    color=COLOR_GRID,
+    alpha=0.8,
+    zorder=0
+)
+
+
 ax_left_bar.spines['top'].set_visible(False)
 ax_left_bar.spines['left'].set_visible(False)
 ax_left_bar.spines['bottom'].set_visible(False)
-ax_left_bar.set_ylim(-0.5, num_symptoms - 0.5)
+ax_left_bar.spines['right'].set_visible(False)
+
+
+ax_left_bar.set_ylim(
+    -0.5,
+    num_symptoms - 0.5
+)
+
+
+# ------------------------------------------
+# Числа около боковых столбцов
+# ------------------------------------------
 
 for bar in left_bars1:
-    ax_left_bar.annotate(f'{int(bar.get_width())} ', xy=(bar.get_width(), bar.get_y() + bar.get_height() / 2),
-                        xytext=(-3, 0), textcoords="offset points", ha='right', va='center', fontsize=9, color='white', weight='bold')
 
-plt.suptitle('Медицинский UpSet Plot: Топ-20 комбинаций', fontsize=14, weight='bold', y=0.97)
-plt.savefig('upset_plot_top20.png', dpi=300, bbox_inches='tight')
-print("💾 График Топ-20 сохранен в файл 'upset_plot_top20.png'")
+    width = bar.get_width()
+
+    ax_left_bar.annotate(
+        f'{int(width)}',
+        xy=(
+            width,
+            bar.get_y() + bar.get_height() / 2
+        ),
+        xytext=(-4, 0),
+        textcoords='offset points',
+        ha='right',
+        va='center',
+        fontsize=9,
+        color='white',
+        weight='bold'
+    )
 
 
 # ==============================================================================
-# ОКНО №2: ИСПРАВЛЕННЫЙ КОМПАКТНЫЙ ВЕРТИКАЛЬНЫЙ ГРАФИК (ВСЕ КОМБИНАЦИИ)
+# ЗАГОЛОВОК
 # ==============================================================================
-plot_combos_all = all_combo_counts  
-num_display_all = len(plot_combos_all)
 
-# 1. Динамическая высота: увеличиваем коэффициент с 0.28 до 0.32 для достаточного интервала между строками
-fig2_height = max(14, num_display_all * 0.32)
-fig2 = plt.figure(figsize=(12, fig2_height))
+plt.suptitle(
+    'Медицинский UpSet Plot: Топ-20 комбинаций',
+    fontsize=14,
+    weight='bold',
+    y=0.97
+)
 
-gs2 = fig2.add_gridspec(2, 2, width_ratios=[0.40, 0.60], height_ratios=[0.05, 0.95], 
-                      wspace=0.05, hspace=0.02)
 
-ax_all_total_symptoms = fig2.add_subplot(gs2[0, 0])             
-ax_all_matrix = fig2.add_subplot(gs2[1, 0], sharex=ax_all_total_symptoms) 
-ax_all_side_bar = fig2.add_subplot(gs2[1, 1], sharey=ax_all_matrix)       
+# ==============================================================================
+# СОХРАНЕНИЕ
+# ==============================================================================
 
-# --- 2.1 Серый верхний график ---
-x_pos2 = range(num_symptoms)
-total_symptom_bars = ax_all_total_symptoms.bar(x_pos2, left_bars_values, color='#7f8c8d', width=0.4, zorder=3)
-ax_all_total_symptoms.set_ylabel('Всего с\nсимптомом', fontsize=8, weight='bold')
-ax_all_total_symptoms.grid(axis='y', linestyle=':', alpha=0.5, zorder=0)
+plt.savefig(
+    'upset_plot_top20.png',
+    dpi=300,
+    bbox_inches='tight'
+)
+
+
+print(
+    "💾 График Топ-20 сохранен в файл "
+    "'upset_plot_top20.png'"
+)
+
+
+plt.show()
+
+
+# ==============================================================================
+# ОКНО №2
+# КОМПАКТНЫЙ ВЕРТИКАЛЬНЫЙ UPSET PLOT
+# ВСЕ КОМБИНАЦИИ
+# ==============================================================================
+
+plot_combos_all = all_combo_counts
+
+num_display_all = len(
+    plot_combos_all
+)
+
+
+# ------------------------------------------
+# Динамическая высота
+# ------------------------------------------
+
+fig2_height = max(
+    14,
+    num_display_all * 0.32
+)
+
+
+fig2 = plt.figure(
+    figsize=(12, fig2_height)
+)
+
+
+gs2 = fig2.add_gridspec(
+    2,
+    2,
+    width_ratios=[0.40, 0.60],
+    height_ratios=[0.05, 0.95],
+    wspace=0.05,
+    hspace=0.02
+)
+
+
+# ------------------------------------------
+# Области
+# ------------------------------------------
+
+ax_all_total_symptoms = fig2.add_subplot(
+    gs2[0, 0]
+)
+
+ax_all_matrix = fig2.add_subplot(
+    gs2[1, 0],
+    sharex=ax_all_total_symptoms
+)
+
+ax_all_side_bar = fig2.add_subplot(
+    gs2[1, 1],
+    sharey=ax_all_matrix
+)
+
+
+# ==============================================================================
+# ВЕРХНИЕ СТОЛБЦЫ
+# ==============================================================================
+
+x_pos2 = range(
+    num_symptoms
+)
+
+
+total_symptom_bars = ax_all_total_symptoms.bar(
+    x_pos2,
+    left_bars_values,
+    color=COLOR_SIDE_BAR,
+    width=0.42,
+    edgecolor='none',
+    zorder=3
+)
+
+
+ax_all_total_symptoms.set_ylabel(
+    'Всего с\nсимптомом',
+    fontsize=8,
+    weight='bold'
+)
+
+
+ax_all_total_symptoms.grid(
+    axis='y',
+    linestyle='-',
+    linewidth=0.6,
+    color=COLOR_GRID,
+    alpha=0.8,
+    zorder=0
+)
+
+
 ax_all_total_symptoms.spines['top'].set_visible(False)
 ax_all_total_symptoms.spines['right'].set_visible(False)
 ax_all_total_symptoms.spines['bottom'].set_visible(False)
 ax_all_total_symptoms.spines['left'].set_visible(False)
-ax_all_total_symptoms.tick_params(labelbottom=False, bottom=False, left=False, labelleft=False)
+
+
+ax_all_total_symptoms.tick_params(
+    labelbottom=False,
+    bottom=False,
+    left=False,
+    labelleft=False
+)
+
+
+# ------------------------------------------
+# Числа над верхними столбцами
+# ------------------------------------------
 
 for bar in total_symptom_bars:
-    ax_all_total_symptoms.annotate(f'{int(bar.get_height())}', 
-                                   xy=(bar.get_x() + bar.get_width()/2, bar.get_height()),
-                                   xytext=(0, 2), textcoords="offset points", 
-                                   ha='center', va='bottom', fontsize=8, weight='bold', color='#4f5b66')
 
-# --- 2.2 Левая компактная матрица точек ---
-ax_all_matrix.set_ylim(num_display_all - 0.5, -0.5)
+    height = bar.get_height()
+
+    ax_all_total_symptoms.annotate(
+        f'{int(height)}',
+        xy=(
+            bar.get_x() + bar.get_width() / 2,
+            height
+        ),
+        xytext=(0, 3),
+        textcoords='offset points',
+        ha='center',
+        va='bottom',
+        fontsize=8,
+        weight='normal',
+        color=COLOR_TEXT
+    )
+
+
+# ==============================================================================
+# МАТРИЦА
+# ==============================================================================
+
+ax_all_matrix.set_ylim(
+    num_display_all - 0.5,
+    -0.5
+)
+
+
+# ------------------------------------------
+# Чередующиеся вертикальные полосы
+# ------------------------------------------
 
 for x in range(num_symptoms):
-    bg_color = COLOR_BG_STRIPE if x % 2 == 0 else 'white'
-    ax_all_matrix.axvspan(x - 0.5, x + 0.5, facecolor=bg_color, zorder=0, alpha=0.5)
 
-dot_size2 = 45 
+    if x % 2 == 0:
+        bg_color = COLOR_ROW_WHITE
+    else:
+        bg_color = COLOR_ROW_GRAY
 
-for y, (combo, count) in enumerate(plot_combos_all):
-    active_x_indices = [symptoms_list.index(s) for s in combo]
-    inactive_x = [x for x in range(num_symptoms) if x not in active_x_indices]
-    
-    ax_all_matrix.scatter(inactive_x, [y] * len(inactive_x), color=COLOR_DOT_EMPTY, s=dot_size2, alpha=0.4, zorder=2)
+    ax_all_matrix.axvspan(
+        x - 0.5,
+        x + 0.5,
+        facecolor=bg_color,
+        zorder=0
+    )
+
+
+dot_size2 = 45
+
+
+for y, (combo, count) in enumerate(
+    plot_combos_all
+):
+
+    # ------------------------------------------
+    # Активные симптомы
+    # ------------------------------------------
+
+    active_x_indices = [
+        symptoms_list.index(s)
+        for s in combo
+    ]
+
+    # ------------------------------------------
+    # Неактивные симптомы
+    # ------------------------------------------
+
+    inactive_x = [
+        x
+        for x in range(num_symptoms)
+        if x not in active_x_indices
+    ]
+
+    # ------------------------------------------
+    # Неактивные точки
+    # ------------------------------------------
+
+    for x in inactive_x:
+
+        # Фон определяется номером столбца
+        if x % 2 == 0:
+            dot_color = COLOR_INACTIVE_WHITE
+        else:
+            dot_color = COLOR_INACTIVE_GRAY
+
+        ax_all_matrix.scatter(
+            x,
+            y,
+            color=dot_color,
+            s=dot_size2,
+            edgecolors='none',
+            linewidths=0,
+            zorder=2
+        )
+
+    # ------------------------------------------
+    # Соединительная линия
+    # ------------------------------------------
+
     if len(active_x_indices) > 1:
-        ax_all_matrix.plot([min(active_x_indices), max(active_x_indices)], [y, y], color=COLOR_PRIMARY, linewidth=1.8, zorder=2)
-    ax_all_matrix.scatter(active_x_indices, [y] * len(active_x_indices), color=COLOR_PRIMARY, s=dot_size2 + 10, zorder=3)
 
-ax_all_matrix.set_xlim(-0.5, num_symptoms - 0.5)
+        ax_all_matrix.plot(
+            [
+                min(active_x_indices),
+                max(active_x_indices)
+            ],
+            [y, y],
+            color=COLOR_CONNECTION,
+            linewidth=1.6,
+            solid_capstyle='round',
+            zorder=2
+        )
 
-# Подписи симптомов снизу матрицы
-ax_all_matrix.set_xticks(range(num_symptoms))
-ax_all_matrix.set_xticklabels(symptoms_list, fontsize=10, weight='bold', rotation=45, ha='right')
-ax_all_matrix.tick_params(axis='x', bottom=True, labelbottom=True)
+    # ------------------------------------------
+    # Активные точки
+    # ------------------------------------------
+
+    ax_all_matrix.scatter(
+        active_x_indices,
+        [y] * len(active_x_indices),
+        color=COLOR_ACTIVE_DOT,
+        s=dot_size2 + 8,
+        edgecolors='none',
+        linewidths=0,
+        zorder=3
+    )
+
+
+# ==============================================================================
+# ОСИ МАТРИЦЫ
+# ==============================================================================
+
+ax_all_matrix.set_xlim(
+    -0.5,
+    num_symptoms - 0.5
+)
+
+
+ax_all_matrix.set_xticks(
+    range(num_symptoms)
+)
+
+
+ax_all_matrix.set_xticklabels(
+    symptoms_list,
+    fontsize=10,
+    weight='bold',
+    rotation=45,
+    ha='right'
+)
+
+
+ax_all_matrix.tick_params(
+    axis='x',
+    bottom=True,
+    labelbottom=True
+)
+
 
 ax_all_matrix.spines['top'].set_visible(False)
 ax_all_matrix.spines['right'].set_visible(False)
 ax_all_matrix.spines['left'].set_visible(False)
 ax_all_matrix.spines['bottom'].set_visible(False)
-ax_all_matrix.tick_params(axis='y', left=False, labelleft=False)
 
-# --- 2.3 Правый блок: горизонтальные столбцы и понятные подписи ---
-all_values = [count for combo, count in plot_combos_all]
-side_bars = ax_all_side_bar.barh(range(num_display_all), all_values, color=COLOR_PRIMARY, height=0.7, zorder=3)
-ax_all_side_bar.set_xlabel('Пациентов в комбинации', fontsize=10, weight='bold')
-ax_all_side_bar.grid(axis='x', linestyle=':', alpha=0.6, zorder=0)
+
+ax_all_matrix.tick_params(
+    axis='y',
+    left=False,
+    labelleft=False
+)
+
+
+# ==============================================================================
+# ПРАВЫЕ СТОЛБЦЫ
+# ==============================================================================
+
+all_values = [
+    count
+    for combo, count in plot_combos_all
+]
+
+
+side_bars = ax_all_side_bar.barh(
+    range(num_display_all),
+    all_values,
+    color=COLOR_BAR,
+    height=0.7,
+    edgecolor='none',
+    zorder=3
+)
+
+
+ax_all_side_bar.set_xlabel(
+    'Пациентов в комбинации',
+    fontsize=10,
+    weight='bold'
+)
+
+
+ax_all_side_bar.grid(
+    axis='x',
+    linestyle='-',
+    linewidth=0.6,
+    color=COLOR_GRID,
+    alpha=0.8,
+    zorder=0
+)
+
 
 ax_all_side_bar.spines['top'].set_visible(False)
 ax_all_side_bar.spines['right'].set_visible(False)
 ax_all_side_bar.spines['bottom'].set_visible(False)
 ax_all_side_bar.spines['left'].set_visible(False)
-ax_all_side_bar.tick_params(labelleft=False, left=False) 
 
-max_val = max(all_values)
 
-# 2. Запас 15% по оси X, чтобы значения за пределами столбцов не выходили за границы рисунка
-ax_all_side_bar.set_xlim(0, max_val * 1.15)  
+ax_all_side_bar.tick_params(
+    labelleft=False,
+    left=False
+)
 
-# 3. Отступ подписи от конца столбца (1.5% от max_val)
-label_offset = max_val * 0.015
 
-# 4. Адаптивный размер шрифта в зависимости от количества строк
-font_size = max(6, min(9, 250 / num_display_all))
+# ==============================================================================
+# ПРЕДЕЛЫ X
+# ==============================================================================
 
-# 5. Вывод чисел строго справа от каждого столбца на белом фоне (ha='left')
+max_val = max(
+    all_values
+)
+
+ax_all_side_bar.set_xlim(
+    0,
+    max_val * 1.15
+)
+
+
+# ==============================================================================
+# ПОДПИСИ К СТОЛБЦАМ
+# ==============================================================================
+
+font_size = max(
+    6,
+    min(
+        9,
+        250 / max(num_display_all, 1)
+    )
+)
+
+# Максимальная ширина области с числами.
+# Она находится между матрицей и правыми столбцами.
+max_label_width = max_val * 0.12
+
 for bar in side_bars:
+
     width = bar.get_width()
+
     ax_all_side_bar.annotate(
         f'{int(width)}',
-        xy=(width + label_offset, bar.get_y() + bar.get_height() / 2),
-        ha='left', va='center',
-        fontsize=font_size, weight='bold', color='#2c3e50', zorder=4
+        xy=(
+            0,
+            bar.get_y() + bar.get_height() / 2
+        ),
+        xytext=(
+            -8,
+            0
+        ),
+        textcoords='offset points',
+        ha='right',
+        va='center',
+        fontsize=font_size,
+        weight='normal',
+        color=COLOR_TEXT,
+        zorder=4
     )
 
-plt.suptitle('Вертикальный UpSet Plot: Распределение всех {} комбинаций датасета'.format(num_display_all), 
-             fontsize=12, weight='bold', y=0.99)
 
-# Сохранение и вывод на экран
-plt.savefig('upset_plot_all_vertical.png', dpi=300, bbox_inches='tight')
-print(" Вертикальный график всех фич сохранен в файл 'upset_plot_all_vertical.png'")
+# ==============================================================================
+# ЗАГОЛОВОК
+# ==============================================================================
+
+plt.suptitle(
+    'Вертикальный UpSet Plot: '
+    'Распределение всех {} комбинаций датасета'.format(
+        num_display_all
+    ),
+    fontsize=12,
+    weight='bold',
+    y=0.99
+)
+
+
+# ==============================================================================
+# СОХРАНЕНИЕ
+# ==============================================================================
+
+plt.savefig(
+    'upset_plot_all_vertical.png',
+    dpi=300,
+    bbox_inches='tight'
+)
+
+
+print(
+    "💾 Вертикальный график всех фич сохранен в файл "
+    "'upset_plot_all_vertical.png'"
+)
+
 
 plt.show()
